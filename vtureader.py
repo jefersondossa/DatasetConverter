@@ -62,6 +62,7 @@ for i in range(numElements):
 
 VertexNodes = []
 EdgeNodes = []
+VertexElements = []
 
 # Maps Vertex and Edge nodes
 for i in range(numNodes):
@@ -72,43 +73,67 @@ for i in range(numNodes):
 GEO = open('file.geo','w')
 GEO.write('size = 1.0;\n')
 
-countPoints = 0
 #Vertex Points
 for i in range(len(VertexNodes)):
-    node = VertexNodes[i]  
-    GEO.write('Point(' + str(countPoints) + ') = {' + \
+    node = VertexNodes[i]
+    VertexElements.append(InvIncidence[VertexNodes[i]])
+    GEO.write('Point(' + str(node) + ') = {' + \
               str(Coordinates[node,0]) + ', ' + str(Coordinates[node,1]) + \
               ', ' + str(Coordinates[node,2]) + ', size};\n')
-    countPoints += 1
 #Edge Points
 for i in range(len(EdgeNodes)):
     node = EdgeNodes[i]  
-    GEO.write('Point(' + str(countPoints) + ') = {' + \
+    GEO.write('Point(' + str(node) + ') = {' + \
               str(Coordinates[node,0]) + ', ' + str(Coordinates[node,1]) + \
               ', ' + str(Coordinates[node,2]) + ', size};\n')
-    countPoints += 1
 
 #Lines - Always connect two vertex, passing through the edge nodes
 countLines = 0
 auxLines = collections.defaultdict(list)
+for i in range(len(VertexNodes)):
+    elVertex = InvIncidence[VertexNodes[i]]
+    for j in range(8):
+        
+        neighborNode = Connectivity[elVertex,j][0]
+        el = elVertex
+        if (len(InvIncidence[neighborNode]) == 2):
+            auxLines[countLines].append(VertexNodes[i])
+            auxLines[countLines].append(neighborNode)
+            
+            while not (neighborNode in VertexNodes):
+                neighborNodePrev = neighborNode
+                elNeighbor = list(set(InvIncidence[neighborNodePrev])-set(el))
+                el = elNeighbor
+                if (el in VertexElements):
+                    aux = list(set(Connectivity[elNeighbor[0],:]) & set(VertexNodes))
+                    auxLines[countLines].append(aux[0])
+                    break;
+                else:
+                    for k in range(8):
+                        neighborNode = Connectivity[elNeighbor[0],k]
+                        if ((len(InvIncidence[neighborNode]) == 2) or \
+                            (len(InvIncidence[neighborNode]) == 1)) and \
+                            (not neighborNode in auxLines[countLines]):
+                                auxLines[countLines].append(neighborNode)
+                                break
+            countLines += 1
 
-#for i in range(len(VertexNodes)):
-##    GEO.write('Spline(' + str(countPoints) + ') = {')
-#    auxLines[countLines].append(VertexNodes[i])
-#   
-#    for j in range(8):
-#        neighborNode = Connectivity[InvIncidence[VertexNodes[i]],j][0]
-#        el = InvIncidence[VertexNodes[i]][0]
-#        if (len(InvIncidence[neighborNode]) == 2):
-#            for k in range(len(InvIncidence[neighborNode])):
-#                if InvIncidence[neighborNode][k] in EdgeNodes:
-#                    a = int(EdgeNodes.index(InvIncidence[neighborNode][k]))
-#                    print("AAA", a)    
-#            
-#    print(auxLines[countLines])
-#    countLines += 1
-#    
-#    
+#duplicate = np.zeros(len(auxLines), dtype=np.int)
+##Delete duplicate lines
+#for i in range(len(auxLines)):
+#    for j in range(i+1,len(auxLines),1):
+#        if len(list(set(auxLines[i])-set(auxLines[j]))) == 0:
+#            duplicate(i) = int(j)
+
+#Write lines in .geo file        
+for i in range(len(auxLines)):
+    GEO.write('Spline(' + str(i) + ') = {' + str(auxLines[i][0]))
+    for k in range(1,len(auxLines[i]),1):
+        GEO.write(', ' + str(auxLines[i][k]))
+    
+    GEO.write('};\n')
+
+print(auxLines)
     
     
     
