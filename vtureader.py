@@ -11,8 +11,8 @@ Created on Mon May 3 2021
 import numpy as np
 import collections
 
-fileVTU = 'SPE9.vtu'
-#fileVTU = 'IRAP_1005.vtu'
+#fileVTU = 'SPE9.vtu'
+fileVTU = 'IRAP_1005.vtu'
 
 VTU = open(fileVTU)
 numElements = 0
@@ -92,20 +92,27 @@ countLines = 0
 auxLines = collections.defaultdict(list)
 for i in range(len(VertexNodes)):
     elVertex = InvIncidence[VertexNodes[i]]
+#    print("i",i)
     for j in range(8):
-        
+#        print("j",j)
         neighborNode = Connectivity[elVertex,j][0]
         el = elVertex
-        if (len(InvIncidence[neighborNode]) == 2):
+        if ((len(InvIncidence[neighborNode]) == 2) or \
+            (len(InvIncidence[neighborNode]) == 1)) and \
+            (neighborNode != VertexNodes[i]):
             auxLines[countLines].append(VertexNodes[i])
             auxLines[countLines].append(neighborNode)
-            
-            while not (neighborNode in VertexNodes):
+            count = 0
+            while not (neighborNode in VertexNodes) and count < 62000:
+                count += 1
+#                print("while",i,j,neighborNode,count)
                 neighborNodePrev = neighborNode
                 elNeighbor = list(set(InvIncidence[neighborNodePrev])-set(el))
                 el = elNeighbor
+                if len(elNeighbor) == 0: break
                 if (el in VertexElements):
-                    aux = list(set(Connectivity[elNeighbor[0],:]) & set(VertexNodes))
+                    aux = list(set(Connectivity[elNeighbor[0],:]) & \
+                               set(VertexNodes))
                     auxLines[countLines].append(aux[0])
                     break;
                 else:
@@ -118,22 +125,21 @@ for i in range(len(VertexNodes)):
                                 break
             countLines += 1
 
-#duplicate = np.zeros(len(auxLines), dtype=np.int)
-##Delete duplicate lines
-#for i in range(len(auxLines)):
-#    for j in range(i+1,len(auxLines),1):
-#        if len(list(set(auxLines[i])-set(auxLines[j]))) == 0:
-#            duplicate(i) = int(j)
+#Verify duplicate lines
+dupLines = np.zeros(len(auxLines), dtype=np.int)
+for i in range(len(auxLines)):
+    for j in range(i+1,len(auxLines),1):
+        if len(list(set(auxLines[i])-set(auxLines[j]))) == 0:
+            dupLines[i] = j
 
 #Write lines in .geo file        
 for i in range(len(auxLines)):
-    GEO.write('Spline(' + str(i) + ') = {' + str(auxLines[i][0]))
-    for k in range(1,len(auxLines[i]),1):
-        GEO.write(', ' + str(auxLines[i][k]))
-    
-    GEO.write('};\n')
+    if (dupLines[i] == 0):
+        GEO.write('Line(' + str(i) + ') = {' + str(auxLines[i][0]))
+        for k in range(1,len(auxLines[i]),1):
+            GEO.write(', ' + str(auxLines[i][k]))    
+        GEO.write('};\n')
 
-print(auxLines)
     
     
     
